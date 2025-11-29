@@ -15,10 +15,16 @@ class Project extends Model
         'start_date',
         'end_date',
         'status',
+        'owner_id',
     ];
 
     public function tasks()
     {
         return $this->hasMany(Task::class);
+    }
+
+    public function owner()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'owner_id');
     }
 }

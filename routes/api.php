@@ -29,5 +29,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('projects/{project}/detail', [ProjectController::class, 'detail']);
     Route::get('projects/{project}/tasks', [ProjectController::class, 'tasks']);
 
-    Route::get('tasks/{task}/detail', [TaskController::class, 'detail']);
+    Route::get('user/projects', [ProjectController::class, 'mine']);
+    Route::get('user/tasks',    [TaskController::class, 'mine']);
+
 });

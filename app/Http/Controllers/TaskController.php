@@ -10,7 +10,15 @@ class TaskController extends Controller
 {
     public function index()
     {
-        return Task::with(['project', 'assignee'])->paginate(20);
+        $tasks = Task::with([
+            'project',
+            'assignee' => function ($q) { $q->select('id', 'name'); },
+        ])->paginate(20);
+
+        return response()->json([
+            'message' => 'Tasks retrieved successfully',
+            'data' => $tasks,
+        ], 200);
     }
 
     public function store(Request $request)
@@ -26,13 +34,22 @@ class TaskController extends Controller
         ]);
 
         $task = Task::create($data);
+        $task->load(['project', 'assignee' => function ($q) { $q->select('id', 'name'); }]);
 
-        return response()->json($task, 201);
+        return response()->json([
+            'message' => 'Task created successfully',
+            'data' => $task,
+        ], 201);
     }
 
     public function show(Task $task)
     {
-        return $task->load(['project', 'assignee']);
+        $task->load(['project', 'assignee' => function ($q) { $q->select('id', 'name'); }]);
+
+        return response()->json([
+            'message' => 'Task retrieved successfully',
+            'data' => $task,
+        ], 200);
     }
 
     /**
@@ -40,7 +57,39 @@ class TaskController extends Controller
      */
     public function detail(Task $task)
     {
-        return $task->load(['project', 'assignee']);
+        $task->load(['project', 'assignee' => function ($q) { $q->select('id', 'name'); }]);
+
+        return response()->json([
+            'message' => 'Task detail retrieved successfully',
+            'data' => $task,
+        ], 200);
+    }
+
+    /**
+     * Return tasks assigned to the authenticated user or belonging to projects owned by the user.
+     */
+    public function mine(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $tasks = Task::where('assigned_to', $user->id)
+            ->orWhereHas('project', function ($q) use ($user) {
+                $q->where('owner_id', $user->id);
+            })
+            ->with([
+                'project',
+                'assignee' => function ($q) { $q->select('id', 'name'); },
+            ])
+            ->paginate(20);
+
+        return response()->json([
+            'message' => 'User tasks retrieved successfully',
+            'data' => $tasks,
+        ], 200);
     }
 
     public function update(Request $request, Task $task)
@@ -56,13 +105,16 @@ class TaskController extends Controller
         ]);
 
         $task->update($data);
-
-        return response()->json($task);
+        return response()->json([
+            'message' => 'Task updated successfully',
+            'data' => $task,
+        ], 200);
     }
 
     public function destroy(Task $task)
     {
         $task->delete();
-        return response()->json(null, 204);
+        return response()->noContent();
+
     }
 }
