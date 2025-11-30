@@ -26,10 +26,30 @@ class ProjectController extends Controller
     }
 
     /**
-     * Return projects owned by the authenticated user.
+     * @OA\Get(
+     *     path="/api/user/projects",
+     *     tags={"Projects"},
+     *     summary="Get authenticated user's projects",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="User projects retrieved successfully",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="message", type="string", example="User projects retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(ref="#/components/schemas/Project")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthenticated", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+     * )
      */
     public function mine(Request $request)
     {
+
         $user = $request->user();
 
         if (! $user) {
@@ -55,8 +75,38 @@ class ProjectController extends Controller
         ], 200);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/api/projects",
+     *     tags={"Projects"},
+     *     summary="Create a new project",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             required={"name"},
+     *             @OA\Property(property="name", type="string", example="New Project"),
+     *             @OA\Property(property="description", type="string", example="Project description"),
+     *             @OA\Property(property="start_date", type="string", format="date", example="2025-12-01"),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2026-01-01"),
+     *             @OA\Property(property="status", type="string", example="planning"),
+     *             @OA\Property(property="owner_id", type="integer", format="int64", example=1)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Project created successfully",
+     *         @OA\JsonContent(type="object", @OA\Property(property="message", type="string"), @OA\Property(property="data", ref="#/components/schemas/Project"))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthenticated", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+     *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+     * )
+     */
+
     public function store(Request $request)
     {
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -77,6 +127,28 @@ class ProjectController extends Controller
         ], 201);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/api/projects/{project}",
+     *     tags={"Projects"},
+     *     summary="Get a single project",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="project",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer", format="int64")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Project retrieved successfully",
+     *         @OA\JsonContent(type="object", @OA\Property(property="message", type="string"), @OA\Property(property="data", ref="#/components/schemas/Project"))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthenticated", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+     *     @OA\Response(response=403, description="Forbidden", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+     *     @OA\Response(response=404, description="Not Found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+     * )
+     */
     public function show(Project $project)
     {
         $this->authorize('view', $project);
@@ -90,9 +162,6 @@ class ProjectController extends Controller
         ], 200);
     }
 
-    /**
-     * Return detailed project with tasks and their assignees
-     */
     public function detail(Project $project)
     {
         $this->authorize('view', $project);
@@ -106,9 +175,6 @@ class ProjectController extends Controller
         ], 200);
     }
 
-    /**
-     * List tasks for a specific project
-     */
     public function tasks(Project $project)
     {
         $this->authorize('view', $project);
@@ -122,6 +188,43 @@ class ProjectController extends Controller
         ], 200);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/api/projects/{project}",
+     *     tags={"Projects"},
+     *     summary="Update a project",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="project", in="path", required=true, @OA\Schema(type="integer", format="int64")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="name", type="string", example="Updated Project Name"),
+     *             @OA\Property(property="description", type="string", example="Updated description"),
+     *             @OA\Property(property="start_date", type="string", format="date", example="2025-12-01"),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2026-01-01"),
+     *             @OA\Property(property="status", type="string", example="ongoing"),
+     *             @OA\Property(property="owner_id", type="integer", format="int64", example=2)
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Project updated successfully", @OA\JsonContent(type="object", @OA\Property(property="message", type="string"), @OA\Property(property="data", ref="#/components/schemas/Project"))),
+     *     @OA\Response(response=401, description="Unauthenticated", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+     *     @OA\Response(response=403, description="Forbidden", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+     *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+     * )
+     * @OA\Patch(
+     *     path="/api/projects/{project}",
+     *     tags={"Projects"},
+     *     summary="Partially update a project",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="project", in="path", required=true, @OA\Schema(type="integer", format="int64")),
+     *     @OA\RequestBody(@OA\JsonContent(type="object")),
+     *     @OA\Response(response=200, description="Project updated successfully", @OA\JsonContent(type="object", @OA\Property(property="message", type="string"), @OA\Property(property="data", ref="#/components/schemas/Project"))),
+     *     @OA\Response(response=401, description="Unauthenticated", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+     *     @OA\Response(response=403, description="Forbidden", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+     *     @OA\Response(response=422, description="Validation error", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+     * )
+     */
     public function update(Request $request, Project $project)
     {
         $this->authorize('update', $project);
@@ -141,6 +244,19 @@ class ProjectController extends Controller
         ], 200);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/api/projects/{project}",
+     *     tags={"Projects"},
+     *     summary="Delete a project",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="project", in="path", required=true, @OA\Schema(type="integer", format="int64")),
+     *     @OA\Response(response=204, description="Project deleted successfully"),
+     *     @OA\Response(response=401, description="Unauthenticated", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+     *     @OA\Response(response=403, description="Forbidden", @OA\JsonContent(ref="#/components/schemas/ErrorResponse")),
+     *     @OA\Response(response=404, description="Not Found", @OA\JsonContent(ref="#/components/schemas/ErrorResponse"))
+     * )
+     */
     public function destroy(Project $project)
     {
         $this->authorize('delete', $project);
